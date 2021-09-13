@@ -30,7 +30,10 @@ import java.util.regex.Pattern;
  * Represents a Java plugin loader, allowing plugins in the form of .jar
  */
 public final class PaperShelledPluginLoader implements PluginLoader {
-    private final Pattern[] fileFilters = new Pattern[]{Pattern.compile("\\.jar$")};
+    private final Pattern[] fileFilters = new Pattern[]{
+            Pattern.compile("\\.papershelled\\.jar$"),
+            Pattern.compile("\\.ps\\.jar$")
+    };
     private final HashMap<String, PaperShelledPlugin> plugins = new HashMap<>();
     private final Instrumentation instrumentation;
     private final HashMap<File, JarFile> jarFiles = new HashMap<>();
@@ -41,12 +44,12 @@ public final class PaperShelledPluginLoader implements PluginLoader {
     }
 
     @SuppressWarnings("unused")
-    @NotNull
-    public HashMap<String, JarFile> getJarFiles() { return jarFilesMap; }
+    @Nullable
+    public JarFile getPluginJar(@NotNull String name) { return jarFilesMap.get(name.replace(' ', '_')); }
 
     @SuppressWarnings("unused")
     @Nullable
-    public PaperShelledPlugin getPlugin(@NotNull String name) { return plugins.get(name); }
+    public PaperShelledPlugin getPlugin(@NotNull String name) { return plugins.get(name.replace(' ', '_')); }
 
     @SuppressWarnings("unused")
     @NotNull
@@ -55,15 +58,13 @@ public final class PaperShelledPluginLoader implements PluginLoader {
     @Override
     @NotNull
     public PaperShelledPlugin loadPlugin(@NotNull final File file) throws InvalidPluginException {
-        if (jarFiles.containsKey(file)) {
-            throw new IllegalPluginAccessException(file + " has been loaded");
-        }
         if (!file.exists()) {
             throw new InvalidPluginException(new FileNotFoundException(file + " does not exist"));
         }
 
         try {
-            JarFile jar = new JarFile(file);
+            JarFile jar = jarFiles.get(file);
+            if (jar == null) jarFiles.put(file, jar = new JarFile(file));
             PluginDescriptionFile description = getPluginDescription(jar);
             PaperShelledPluginDescription paperShelledPluginDescription = getPluginPaperShelledDescription(jar);
             String name = description.getName();
@@ -110,6 +111,7 @@ public final class PaperShelledPluginLoader implements PluginLoader {
 
                 jarFilesMap.put(name, jar);
                 paperShelledPluginDescription.getMixins().forEach(it -> Mixins.addConfiguration(name + "|" + it));
+                plugins.put(name, plugin);
 
                 return plugin;
             } catch (IllegalAccessException | NoSuchMethodException | InvocationTargetException ex) {

@@ -20,9 +20,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Objects;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 public final class MixinService extends MixinServiceAbstract implements IClassProvider, IClassBytecodeProvider {
     private final ClassLoader loader = getClass().getClassLoader();
@@ -76,21 +78,27 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
     public IContainerHandle getPrimaryContainer() {
         return new ContainerHandleVirtual(getName());
     }
+
     @Override
     public InputStream getResourceAsStream(String name) {
+        System.out.println(name);
         if (name.equals("mixin.refmap.json")) return refMap;
         try {
             String[] names = name.split("\\|", 2);
             if (names.length == 2) {
-                return Objects.requireNonNull(PaperShelled.getPluginLoader().getPlugin(names[0]),
-                                "No such plugin: " + names[1]).getResource(names[1]);
+                JarFile jar = PaperShelled.getPluginLoader().getPluginJar(names[0]);
+                if (jar == null) throw new NoSuchFileException("No such plugin: " + names[0]);
+                JarEntry entry = jar.getJarEntry(names[1]);
+                if (entry == null) throw new NoSuchFileException("No such file: " + names[1]);
+                return jar.getInputStream(entry);
             }
             URI uri = URI.create(name);
             try (FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
                 return new ByteArrayInputStream(Files.readAllBytes(fs.provider().getPath(uri)));
             }
         } catch (Throwable e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -113,12 +121,12 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
 
     @Override
     public Class<?> findClass(String name, boolean initialize) throws ClassNotFoundException {
-        return Class.forName(name);
+        return Class.forName(name, initialize, loader);
     }
 
     @Override
     public Class<?> findAgentClass(String name, boolean initialize) throws ClassNotFoundException {
-        return Class.forName(name);
+        return Class.forName(name, initialize, loader);
     }
 
     @Override
@@ -134,7 +142,7 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
 
         String canonicalName = name.replace('/', '.');
 
-        try (InputStream is = loader.getResourceAsStream(canonicalName + ".class")) {
+        try (InputStream is = ClassLoader.getSystemResourceAsStream(name.replace('.', '/') + ".class")) {
             if (is != null) {
                 byte[] classBytes = ByteStreams.toByteArray(is);
                 if (classBytes.length != 0) {

@@ -41,7 +41,7 @@ jar {
 shadowJar {
     shadowJar {
         relocate 'joptsimple', 'cn.apisium.papershelled.jopt'
-        relocate 'com.google.guava', 'cn.apisium.papershelled.guava'
+        relocate 'com.google.common', 'cn.apisium.papershelled.guava'
         relocate 'org.apache.logging.log4j', 'cn.apisium.papershelled.log4j'
     }
     archiveClassifier.set('')
