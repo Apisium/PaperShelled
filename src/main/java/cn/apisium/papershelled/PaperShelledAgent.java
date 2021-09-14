@@ -10,28 +10,12 @@ import org.spongepowered.tools.agent.MixinAgent;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
-import java.util.Date;
 import java.util.logging.*;
 
-@SuppressWarnings("deprecation")
 public final class PaperShelledAgent {
     private static boolean initialized;
     private static Instrumentation instrumentation;
-    public final static Logger LOGGER = Logger.getLogger("PaperShelled");
-
-    static {
-        LOGGER.setUseParentHandlers(false);
-        ConsoleHandler handler = new ConsoleHandler();
-        handler.setFormatter(new Formatter() {
-            @Override
-            public String format(LogRecord record) {
-                Date date = new Date(record.getMillis());
-                return String.format("[%02d:%02d:%02d %s]: [%s] %s%n", date.getHours(), date.getMinutes(),
-                        date.getSeconds(), record.getLevel().getName(), record.getLoggerName(), record.getMessage());
-            }
-        });
-        LOGGER.addHandler(handler);
-    }
+    public final static Logger LOGGER = PaperShelledLogger.getLogger(null);
 
     private final static class Transformer implements ClassFileTransformer {
         @Override
@@ -107,5 +91,6 @@ public final class PaperShelledAgent {
     public static void init() throws Throwable {
         initialized = true;
         PaperShelled.init(instrumentation);
+        PaperShelledLogger.restore();
     }
 }

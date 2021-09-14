@@ -1,5 +1,6 @@
 package cn.apisium.papershelled.plugin;
 
+import cn.apisium.papershelled.PaperShelledLogger;
 import com.google.common.base.Charsets;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
@@ -43,7 +44,8 @@ public class PaperShelledPlugin extends PluginBase {
         this.file = file;
         dataFolder = file.getParentFile();
         configFile = new File(dataFolder, "config.yml");
-        logger = PluginLogger.getLogger(description);
+        logger = PaperShelledLogger.getLogger(description.getPrefix() == null ?
+                description.getName() : description.getPrefix());
     }
 
     @SuppressWarnings("unused")
