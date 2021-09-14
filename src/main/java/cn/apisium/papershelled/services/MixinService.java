@@ -18,12 +18,8 @@ import org.spongepowered.asm.transformers.MixinClassReader;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,7 +32,7 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
     private final static ByteArrayInputStream refMap =
             new ByteArrayInputStream("{\"mappings\":{}}".getBytes(StandardCharsets.UTF_8));
     private static IMixinTransformer transformer;
-    private final static boolean NOT_DEBUG = !System.setProperty("paperShelled.debug", "false").equals("true");
+    private final static boolean NOT_DEBUG = !System.getProperty("paperShelled.debug", "false").equals("true");
 
     public static IMixinTransformer getTransformer() { return transformer; }
 
@@ -98,10 +94,9 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
                 if (entry == null) throw new NoSuchFileException("No such file: " + names[1]);
                 return jar.getInputStream(entry);
             }
-            URI uri = URI.create(name);
-            try (FileSystem fs = FileSystems.newFileSystem(uri, Collections.emptyMap())) {
-                return new ByteArrayInputStream(Files.readAllBytes(fs.provider().getPath(uri)));
-            }
+            InputStream is = ClassLoader.getSystemResourceAsStream(name);
+            if (is == null) throw new NoSuchFileException("No such file: " + name);
+            return is;
         } catch (Throwable e) {
             e.printStackTrace();
             return null;
