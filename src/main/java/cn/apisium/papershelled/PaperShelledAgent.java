@@ -69,6 +69,7 @@ public final class PaperShelledAgent {
     }
 
     private static void initPaperShelled(Instrumentation instrumentation) {
+        System.setProperty("mixin.env.remapRefMap", "true");
         PaperShelledAgent.instrumentation = instrumentation;
         instrumentation.addTransformer(new Transformer());
         MixinBootstrap.init();

@@ -1,3 +1,6 @@
+//file:noinspection GroovyUnusedAssignment
+//file:noinspection GrUnresolvedAccess
+
 plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
@@ -13,14 +16,14 @@ repositories {
     mavenCentral()
     maven { url "https://hub.spigotmc.org/nexus/content/repositories/snapshots/" }
     maven { url "https://repo.spongepowered.org/repository/maven-public/" }
-    maven { url 'https://files.minecraftforge.net/maven' }
+    maven { url 'https://maven.fabricmc.net/' }
 }
 
 dependencies {
     compileOnly 'org.spigotmc:spigot-api:1.17-R0.1-SNAPSHOT'
+    compileOnly 'net.fabricmc:tiny-mappings-parser:0.3.0+build.17'
     implementation 'org.spongepowered:mixin:0.8.4'
     implementation 'com.google.guava:guava:30.1.1-jre'
-    implementation 'org.apache.logging.log4j:log4j-core:2.14.1'
     implementation 'org.jetbrains:annotations:22.0.0'
     implementation "org.ow2.asm:asm:${project.asm_version}"
     implementation "org.ow2.asm:asm-analysis:${project.asm_version}"
@@ -39,11 +42,8 @@ jar {
 }
 
 shadowJar {
-    shadowJar {
-        relocate 'joptsimple', 'cn.apisium.papershelled.jopt'
-        relocate 'com.google.common', 'cn.apisium.papershelled.guava'
-        relocate 'org.apache.logging.log4j', 'cn.apisium.papershelled.log4j'
-    }
+    relocate 'joptsimple', 'cn.apisium.papershelled.jopt'
+    relocate 'com.google.common', 'cn.apisium.papershelled.guava'
     archiveClassifier.set('')
 }
 

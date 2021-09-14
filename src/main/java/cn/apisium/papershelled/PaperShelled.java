@@ -22,12 +22,27 @@ public final class PaperShelled {
     @NotNull
     public static PaperShelledPluginLoader getPluginLoader() { return loader; }
 
-    @SuppressWarnings({"ProtectedMemberInFinalClass", "deprecation"})
+    @SuppressWarnings("ProtectedMemberInFinalClass")
     protected static void init(Instrumentation instrumentation) throws Throwable {
         Path pluginsPath = Paths.get("PaperShelled/plugins");
         Files.createDirectories(pluginsPath);
         loader = new PaperShelledPluginLoader(instrumentation);
 
+//        new PaperShelledReferenceMapper("META-INF/mappings/reobf.tiny");
+
+        loadPlugins(pluginsPath).forEach(it -> {
+            try {
+                PaperShelledAgent.LOGGER.info("Loading " + it.getDescription().getFullName());
+                it.onLoad();
+            } catch (Throwable ex) {
+                PaperShelledAgent.LOGGER.log(Level.SEVERE, ex.getMessage() + " initializing " +
+                        ex.getMessage() + " (Is it up to date?)", ex);
+            }
+        });
+    }
+
+    @SuppressWarnings("deprecation")
+    private static List<Plugin> loadPlugins(Path pluginsPath) throws Throwable {
         List<Plugin> result = new ArrayList<>();
         HashMap<String, File> plugins = new HashMap<>();
         HashSet<String> loadedPlugins = new HashSet<>();
@@ -212,15 +227,7 @@ public final class PaperShelled {
                 }
             }
         }
-        result.forEach(it -> {
-            try {
-                PaperShelledAgent.LOGGER.info("Loading " + it.getDescription().getFullName());
-                it.onLoad();
-            } catch (Throwable ex) {
-                PaperShelledAgent.LOGGER.log(Level.SEVERE, ex.getMessage() + " initializing " +
-                        ex.getMessage() + " (Is it up to date?)", ex);
-            }
-        });
+        return result;
     }
 
     @SuppressWarnings({ "unused", "unchecked", "SynchronizationOnLocalVariableOrMethodParameter" })
