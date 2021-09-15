@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+
 //file:noinspection GroovyUnusedAssignment
 //file:noinspection GrUnresolvedAccess
 
@@ -10,7 +12,7 @@ sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
 group 'cn.apisium.papershelled'
-version '1.0-SNAPSHOT'
+def psVersion = version = System.getenv('RELEASE_VERSION') ?: '0.0.0-DEV'
 
 repositories {
     mavenCentral()
@@ -32,6 +34,11 @@ dependencies {
 
 jar {
     manifest {
+        def sdf = new SimpleDateFormat("EEE, MMM d, yyyy hh:mm:ss a z")
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"))
+        attributes 'Implementation-Title': 'PaperShelled'
+        attributes 'Implementation-Version': psVersion
+        attributes 'Implementation-Vendor': sdf.format(new Date())
         attributes 'Can-Redefine-Classes': 'true'
         attributes 'Can-Retransform-Classes': 'true'
         attributes 'Agent-Class': 'cn.apisium.papershelled.PaperShelledAgent'
@@ -40,7 +47,6 @@ jar {
 }
 
 shadowJar {
-    relocate 'joptsimple', 'cn.apisium.papershelled.jopt'
     relocate 'com.google.common', 'cn.apisium.papershelled.guava'
     archiveClassifier.set('')
 }

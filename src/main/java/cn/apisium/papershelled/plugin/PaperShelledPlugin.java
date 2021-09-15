@@ -11,15 +11,16 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.PluginBase;
 import org.bukkit.plugin.PluginDescriptionFile;
-import org.bukkit.plugin.PluginLoader;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.net.URL;
-import java.net.URLConnection;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -42,7 +43,7 @@ public class PaperShelledPlugin extends PluginBase {
         this.paperShelledDescription = paperShelledDescription;
         this.description = description;
         this.file = file;
-        dataFolder = file.getParentFile();
+        dataFolder = new File(file.getParentFile(), description.getName());
         configFile = new File(dataFolder, "config.yml");
         logger = PaperShelledLogger.getLogger(description.getPrefix() == null ?
                 description.getName() : description.getPrefix());
@@ -71,7 +72,7 @@ public class PaperShelledPlugin extends PluginBase {
      */
     @NotNull
     @Override
-    public final PluginLoader getPluginLoader() {
+    public final PaperShelledPluginLoader getPluginLoader() {
         return loader;
     }
 
@@ -199,30 +200,17 @@ public class PaperShelledPlugin extends PluginBase {
             throw new IllegalArgumentException("The embedded resource '" + resourcePath + "' cannot be found in " + file);
         }
 
-        File outFile = new File(dataFolder, resourcePath);
-        int lastIndex = resourcePath.lastIndexOf('/');
-        File outDir = new File(dataFolder, resourcePath.substring(0, Math.max(lastIndex, 0)));
-
-        if (!outDir.exists()) {
-            // noinspection ResultOfMethodCallIgnored
-            outDir.mkdirs();
-        }
+        Path outFile = new File(dataFolder, resourcePath).toPath();
 
         try {
-            if (!outFile.exists() || replace) {
-                OutputStream out = new FileOutputStream(outFile);
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = in.read(buf)) > 0) {
-                    out.write(buf, 0, len);
-                }
-                out.close();
-                in.close();
+            if (outFile.getParent() != null) Files.createDirectories(outFile.getParent());
+            if (!Files.exists(outFile) || replace) {
+                Files.copy(in, outFile);
             } else {
-                logger.log(Level.WARNING, "Could not save " + outFile.getName() + " to " + outFile + " because " + outFile.getName() + " already exists.");
+                logger.log(Level.WARNING, "Could not save " + outFile + " because it already exists.");
             }
         } catch (IOException ex) {
-            logger.log(Level.SEVERE, "Could not save " + outFile.getName() + " to " + outFile, ex);
+            logger.log(Level.SEVERE, "Could not save " + outFile, ex);
         }
     }
 
@@ -235,15 +223,10 @@ public class PaperShelledPlugin extends PluginBase {
         }
 
         try {
-            URL url = getClass().getResource(filename);
-
-            if (url == null) {
-                return null;
-            }
-
-            URLConnection connection = url.openConnection();
-            connection.setUseCaches(false);
-            return connection.getInputStream();
+            JarFile jar = loader.getPluginJar(description.getName());
+            JarEntry entry = jar.getJarEntry(filename);
+            if (entry == null) return null;
+            return jar.getInputStream(entry);
         } catch (IOException ex) {
             return null;
         }

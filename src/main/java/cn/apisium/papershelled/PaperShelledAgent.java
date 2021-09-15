@@ -69,6 +69,10 @@ public final class PaperShelledAgent {
     }
 
     private static void initPaperShelled(Instrumentation instrumentation) {
+        Package pkg = PaperShelledAgent.class.getPackage();
+        LOGGER.info(pkg.getImplementationTitle() + " version: " + pkg.getImplementationVersion() +
+                "(" + pkg.getImplementationVendor() + ")");
+        LOGGER.info("You can get the latest updates from: https://github.com/Apisium/PaperShelled");
         System.setProperty("mixin.env.remapRefMap", "true");
         PaperShelledAgent.instrumentation = instrumentation;
         instrumentation.addTransformer(new Transformer());

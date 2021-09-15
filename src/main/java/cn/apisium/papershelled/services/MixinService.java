@@ -83,7 +83,6 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
 
     @Override
     public InputStream getResourceAsStream(String name) {
-        System.out.println(name);
         if (name.equals("mixin.refmap.json")) return refMap;
         try {
             String[] names = name.split("\\|", 2);

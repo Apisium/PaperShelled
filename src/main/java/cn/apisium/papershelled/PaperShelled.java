@@ -28,8 +28,6 @@ public final class PaperShelled {
         Files.createDirectories(pluginsPath);
         loader = new PaperShelledPluginLoader(instrumentation);
 
-//        new PaperShelledReferenceMapper("META-INF/mappings/reobf.tiny");
-
         loadPlugins(pluginsPath).forEach(it -> {
             try {
                 PaperShelledAgent.LOGGER.info("Loading " + it.getDescription().getFullName());
