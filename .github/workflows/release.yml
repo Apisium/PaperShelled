@@ -33,6 +33,6 @@ jobs:
       - name: Upload binaries to release
         uses: Shopify/upload-to-release@v1.0.1
         with:
-          name: PaperShelled=-${{ env.RELEASE_VERSION }}.jar
+          name: PaperShelled-${{ env.RELEASE_VERSION }}.jar
           path: build/libs/PaperShelled-${{ env.RELEASE_VERSION }}.jar
           repo-token: ${{ secrets.GITHUB_TOKEN }}

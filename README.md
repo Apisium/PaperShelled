@@ -4,7 +4,7 @@ A Paper plugin mixin development framework.
 
 ## Usage
 
-1. Download the [PaperShelled.jar](https://github.com/Apisium/PaperShelled/releases/latest/download/PaperShelled.jar)
+1. Download the [PaperShelled.jar](https://github.com/Apisium/PaperShelled/releases/latest)
 2. Put the downloaded jar file into your MineCraft server root directory.
 3. Start your MineCraft server with the following command line parameters:
 
