@@ -34,8 +34,8 @@ dependencies {
 
 jar {
     manifest {
-        def sdf = new SimpleDateFormat("EEE, MMM d, yyyy hh:mm:ss a z")
-        sdf.setTimeZone(TimeZone.getTimeZone("GMT"))
+        def sdf = new SimpleDateFormat('EEE, MMM d, yyyy hh:mm:ss a z', Locale.US)
+        sdf.setTimeZone(TimeZone.getTimeZone('GMT'))
         attributes 'Implementation-Title': 'PaperShelled'
         attributes 'Implementation-Version': psVersion
         attributes 'Implementation-Vendor': sdf.format(new Date())
