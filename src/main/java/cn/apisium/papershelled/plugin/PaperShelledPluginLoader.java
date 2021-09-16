@@ -17,7 +17,6 @@ import org.spongepowered.asm.mixin.Mixins;
 import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.*;
-import java.lang.instrument.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -35,13 +34,8 @@ public final class PaperShelledPluginLoader implements PluginLoader {
             Pattern.compile("\\.ps\\.jar$")
     };
     private final HashMap<String, PaperShelledPlugin> plugins = new HashMap<>();
-    private final Instrumentation instrumentation;
     private final HashMap<File, JarFile> jarFiles = new HashMap<>();
     private final HashMap<String, JarFile> jarFilesMap = new HashMap<>();
-
-    public PaperShelledPluginLoader(Instrumentation instrumentation) {
-        this.instrumentation = instrumentation;
-    }
 
     @SuppressWarnings("unused")
     @Nullable
@@ -88,7 +82,7 @@ public final class PaperShelledPluginLoader implements PluginLoader {
             }
 
             jarFiles.put(file, jar);
-            instrumentation.appendToSystemClassLoaderSearch(jar);
+            PaperShelledAgent.getInstrumentation().appendToSystemClassLoaderSearch(jar);
 
             try {
                 Class<?> jarClass;

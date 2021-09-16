@@ -6,7 +6,6 @@ import org.bukkit.plugin.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,10 +22,10 @@ public final class PaperShelled {
     public static PaperShelledPluginLoader getPluginLoader() { return loader; }
 
     @SuppressWarnings("ProtectedMemberInFinalClass")
-    protected static void init(Instrumentation instrumentation) throws Throwable {
+    protected static void init() throws Throwable {
         Path pluginsPath = Paths.get("PaperShelled/plugins");
         Files.createDirectories(pluginsPath);
-        loader = new PaperShelledPluginLoader(instrumentation);
+        loader = new PaperShelledPluginLoader();
 
         loadPlugins(pluginsPath).forEach(it -> {
             try {

@@ -1,6 +1,7 @@
 package cn.apisium.papershelled;
 
 import cn.apisium.papershelled.services.MixinService;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.*;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.Remapper;
@@ -35,6 +36,9 @@ public final class PaperShelledAgent {
             return super.map(name);
         }
     };
+
+    @NotNull
+    public static Instrumentation getInstrumentation() { return instrumentation; }
 
     private final static class Transformer implements ClassFileTransformer {
         @Override
@@ -99,7 +103,7 @@ public final class PaperShelledAgent {
     @SuppressWarnings("unused")
     public static void init() throws Throwable {
         initialized = true;
-        PaperShelled.init(instrumentation);
+        PaperShelled.init();
         PaperShelledLogger.restore();
     }
 
