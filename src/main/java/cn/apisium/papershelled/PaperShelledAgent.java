@@ -1,6 +1,7 @@
 package cn.apisium.papershelled;
 
 import cn.apisium.papershelled.services.MixinService;
+import com.google.common.io.ByteStreams;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
@@ -11,6 +12,9 @@ import org.spongepowered.asm.mixin.MixinEnvironment;
 import org.spongepowered.asm.mixin.transformer.IMixinTransformer;
 import org.spongepowered.tools.agent.MixinAgent;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.net.JarURLConnection;
@@ -54,6 +58,19 @@ public final class PaperShelledAgent {
     @SuppressWarnings("unused")
     @Nullable
     public static Path getServerJar() { return serverJar; }
+
+    @Nullable
+    public static InputStream getResourceAsStream(String name) { return ClassLoader.getSystemResourceAsStream(name); }
+    @Nullable
+    public static InputStream getClassAsStream(String name) {
+        return getResourceAsStream(name.replace('.', '/') + ".class");
+    }
+    public static byte[] getClassAsByteArray(String name) throws IOException {
+        try (InputStream is = getClassAsStream(name)) {
+            if (is == null) throw new FileNotFoundException("Class not found: " + name);
+            return ByteStreams.toByteArray(is);
+        }
+    }
 
     private final static class Transformer implements ClassFileTransformer {
         @Override

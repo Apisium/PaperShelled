@@ -2,6 +2,7 @@ package cn.apisium.papershelled.services;
 
 import cn.apisium.papershelled.MixinPlatformAgent;
 import cn.apisium.papershelled.PaperShelled;
+import cn.apisium.papershelled.PaperShelledAgent;
 import cn.apisium.papershelled.PaperShelledLogger;
 import com.google.common.io.ByteStreams;
 import org.objectweb.asm.ClassReader;
@@ -17,6 +18,7 @@ import org.spongepowered.asm.service.*;
 import org.spongepowered.asm.transformers.MixinClassReader;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -93,7 +95,7 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
                 if (entry == null) throw new NoSuchFileException("No such file: " + names[1]);
                 return jar.getInputStream(entry);
             }
-            InputStream is = ClassLoader.getSystemResourceAsStream(name);
+            InputStream is = PaperShelledAgent.getResourceAsStream(name);
             if (is == null) throw new NoSuchFileException("No such file: " + name);
             return is;
         } catch (Throwable e) {
@@ -192,20 +194,18 @@ public final class MixinService extends MixinServiceAbstract implements IClassPr
         }
 
         String canonicalName = name.replace('/', '.');
-
-        try (InputStream is = ClassLoader.getSystemResourceAsStream(name.replace('.', '/') + ".class")) {
-            if (is != null) {
-                byte[] classBytes = ByteStreams.toByteArray(is);
-                if (classBytes.length != 0) {
-                    ClassNode classNode = new ClassNode();
-                    ClassReader classReader = new MixinClassReader(classBytes, canonicalName);
-                    classReader.accept(classNode, ClassReader.EXPAND_FRAMES);
-                    return classNode;
-                }
+        try {
+            byte[] classBytes = PaperShelledAgent.getClassAsByteArray(name);
+            if (classBytes.length != 0) {
+                ClassNode classNode = new ClassNode();
+                ClassReader classReader = new MixinClassReader(classBytes, canonicalName);
+                classReader.accept(classNode, ClassReader.EXPAND_FRAMES);
+                return classNode;
             }
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new ClassNotFoundException(canonicalName, e);
         }
+
         throw new ClassNotFoundException(canonicalName);
     }
 }
