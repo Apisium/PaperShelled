@@ -1,6 +1,6 @@
 # PaperShelled [![](https://www.jitpack.io/v/Apisium/PaperShelled.svg)](https://www.jitpack.io/#Apisium/PaperShelled) [![Release](https://github.com/Apisium/PaperShelled/actions/workflows/release.yml/badge.svg)](https://github.com/Apisium/PaperShelled/actions/workflows/release.yml)
 
-A Paper plugin mixin development framework.
+A Spigot mixin development framework.
 
 ## Usage
 
