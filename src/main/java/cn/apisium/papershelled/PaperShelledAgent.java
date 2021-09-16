@@ -2,6 +2,7 @@ package cn.apisium.papershelled;
 
 import cn.apisium.papershelled.services.MixinService;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
 import org.objectweb.asm.commons.ClassRemapper;
 import org.objectweb.asm.commons.Remapper;
@@ -13,6 +14,11 @@ import org.spongepowered.tools.agent.MixinAgent;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.net.JarURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
 import java.util.Objects;
@@ -24,6 +30,7 @@ public final class PaperShelledAgent {
     private static boolean initialized;
     private static Instrumentation instrumentation;
     private static String obcVersion, obcClassName;
+    private static Path serverJar;
     public final static Logger LOGGER = PaperShelledLogger.getLogger(null);
     private final static Remapper remapper = new Remapper() {
         @Override
@@ -40,14 +47,27 @@ public final class PaperShelledAgent {
     @NotNull
     public static Instrumentation getInstrumentation() { return instrumentation; }
 
+    @SuppressWarnings("unused")
+    @NotNull
+    public static String getMinecraftVersion() { return obcVersion; }
+
+    @SuppressWarnings("unused")
+    @Nullable
+    public static Path getServerJar() { return serverJar; }
+
     private final static class Transformer implements ClassFileTransformer {
         @Override
         public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
                                 ProtectionDomain protectionDomain, byte[] data) {
             if ("org/bukkit/craftbukkit/Main".equals(className)) {
                 data = inject(data, "main", "cn/apisium/papershelled/PaperShelledAgent", "init");
-                try (JarFile jar = ((JarURLConnection) Objects.requireNonNull(ClassLoader.getSystemResource("org/bukkit/craftbukkit/Main.class"))
-                        .openConnection()).getJarFile()) {
+                URL url = Objects.requireNonNull(ClassLoader.getSystemResource("org/bukkit/craftbukkit/Main.class"));
+                try {
+                    serverJar = Paths.get(new URI(url.getFile().split("!", 2)[0]));
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                }
+                try (JarFile jar = ((JarURLConnection) url.openConnection()).getJarFile()) {
                     Enumeration<JarEntry> itor = jar.entries();
                     while (itor.hasMoreElements()) {
                         String name = itor.nextElement().getName();

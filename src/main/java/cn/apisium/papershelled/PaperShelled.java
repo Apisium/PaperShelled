@@ -62,6 +62,7 @@ public final class PaperShelled {
                     continue;
                 }
             } catch (InvalidDescriptionException ex) {
+                ex.printStackTrace();
                 PaperShelledAgent.LOGGER.log(Level.SEVERE, "Could not load '" + file.getPath() + "'", ex);
                 continue;
             }
@@ -148,7 +149,7 @@ public final class PaperShelled {
 
                             PaperShelledAgent.LOGGER.log(
                                     Level.SEVERE,
-                                    "Could not load '" + entry.getValue().getPath() + "' in folder",
+                                    "Could not load '" + entry.getValue().getPath() + "'",
                                     new UnknownDependencyException("Unknown dependency " + dependency +
                                             ". Please download and install " + dependency + " to run this plugin."));
                             break;
@@ -181,6 +182,7 @@ public final class PaperShelled {
                         loadedPlugins.add(loadedPlugin.getName());
                         loadedPlugins.addAll(loadedPlugin.getDescription().getProvides());
                     } catch (InvalidPluginException ex) {
+                        ex.printStackTrace();
                         PaperShelledAgent.LOGGER.log(Level.SEVERE, "Could not load '" + file.getPath() + "'", ex);
                     }
                 }
@@ -206,6 +208,7 @@ public final class PaperShelled {
                             loadedPlugins.addAll(loadedPlugin.getDescription().getProvides());
                             break;
                         } catch (InvalidPluginException ex) {
+                            ex.printStackTrace();
                             PaperShelledAgent.LOGGER.log(Level.SEVERE, "Could not load '" + file.getPath() + "'", ex);
                         }
                     }
