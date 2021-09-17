@@ -1,11 +1,16 @@
 package cn.apisium.papershelled;
 
 import cn.apisium.papershelled.plugin.PaperShelledPluginLoader;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,7 +20,12 @@ import java.util.logging.Level;
 import java.util.regex.Pattern;
 
 public final class PaperShelled {
+    private static JsonObject versionJson;
     private static PaperShelledPluginLoader loader;
+
+    @SuppressWarnings("unused")
+    @Nullable
+    public static JsonObject getVersionJson() { return versionJson; }
 
     @SuppressWarnings("unused")
     @NotNull
@@ -23,6 +33,9 @@ public final class PaperShelled {
 
     @SuppressWarnings("ProtectedMemberInFinalClass")
     protected static void init() throws Throwable {
+        try (InputStream is = PaperShelledAgent.getResourceAsStream("version.json")) {
+            if (is != null) versionJson = new JsonParser().parse(new InputStreamReader(is)).getAsJsonObject();
+        }
         Path pluginsPath = Paths.get("PaperShelled/plugins");
         Files.createDirectories(pluginsPath);
         loader = new PaperShelledPluginLoader();

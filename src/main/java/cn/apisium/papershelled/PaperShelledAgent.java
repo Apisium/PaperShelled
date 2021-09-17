@@ -2,8 +2,6 @@ package cn.apisium.papershelled;
 
 import cn.apisium.papershelled.services.MixinService;
 import com.google.common.io.ByteStreams;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
@@ -17,7 +15,6 @@ import org.spongepowered.tools.agent.MixinAgent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
 import java.net.JarURLConnection;
@@ -38,7 +35,6 @@ public final class PaperShelledAgent {
     private static Instrumentation instrumentation;
     private static String obcVersion, obcClassName;
     private static Path serverJar;
-    private static JsonObject versionJson;
     public final static Logger LOGGER = PaperShelledLogger.getLogger(null);
     private final static Remapper remapper = new Remapper() {
         @Override
@@ -56,20 +52,12 @@ public final class PaperShelledAgent {
     public static Instrumentation getInstrumentation() { return instrumentation; }
 
     @SuppressWarnings("unused")
-    @Nullable
-    public static String getMinecraftVersion() { return versionJson == null ? null : versionJson.get("id").getAsString(); }
-
-    @SuppressWarnings("unused")
     @NotNull
     public static String getReleaseVersion() { return obcVersion; }
 
     @SuppressWarnings("unused")
     @Nullable
     public static Path getServerJar() { return serverJar; }
-
-    @SuppressWarnings("unused")
-    @Nullable
-    public static JsonObject getVersionJson() { return versionJson; }
 
     @Nullable
     public static InputStream getResourceAsStream(String name) { return ClassLoader.getSystemResourceAsStream(name); }
@@ -152,13 +140,6 @@ public final class PaperShelledAgent {
     @SuppressWarnings("unused")
     public static void init() throws Throwable {
         initialized = true;
-        try (InputStream is = getResourceAsStream("version.json")) {
-            if (is == null) {
-                LOGGER.warning("Cannot found the version.json");
-                return;
-            }
-            versionJson = new JsonParser().parse(new InputStreamReader(is)).getAsJsonObject();
-        }
         PaperShelled.init();
         PaperShelledLogger.restore();
     }
