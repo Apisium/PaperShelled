@@ -32,6 +32,7 @@ public final class PaperShelled {
                 PaperShelledAgent.LOGGER.info("Loading " + it.getDescription().getFullName());
                 it.onLoad();
             } catch (Throwable ex) {
+                ex.printStackTrace();
                 PaperShelledAgent.LOGGER.log(Level.SEVERE, ex.getMessage() + " initializing " +
                         ex.getMessage() + " (Is it up to date?)", ex);
             }
