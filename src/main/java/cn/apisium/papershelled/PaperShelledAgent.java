@@ -17,14 +17,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.net.JarURLConnection;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Array;
+import java.lang.reflect.Method;
+import java.net.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
+import java.util.Map;
 import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -73,12 +74,67 @@ public final class PaperShelledAgent {
     }
 
     private final static class Transformer implements ClassFileTransformer {
+        private boolean hasPaperClip = false;
+        private boolean isLegacy = true;
+        private boolean errored = false;
         @Override
         public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
                                 ProtectionDomain protectionDomain, byte[] data) {
+            if(!hasPaperClip && className.contains("paperclip")) {
+                hasPaperClip = true;
+                LOGGER.info("PaperShelled detected Paperclip.");
+            }
+            if(className.equals("io/papermc/paperclip/Paperclip")) {
+                LOGGER.info("Paperclip is being transformed.");
+                ClassReader cr = new ClassReader(data);
+                cr.accept(new ClassVisitor(Opcodes.ASM9) {
+                    @Override
+                    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                        if (name.equals("setupClasspath")) {
+                            isLegacy = false;
+                        }
+                        return super.visitMethod(access, name, descriptor, signature, exceptions);
+                    }
+                }, ClassReader.SKIP_CODE);
+                if (!isLegacy) {
+                    LOGGER.info("PaperShelled detected a non-legacy launcher environment.");
+                    isLegacy = false;
+                    ClassWriter cw = new ClassWriter(0);
+                    cr.accept(new ClassVisitor(Opcodes.ASM9, cw) {
+                        @Override
+                        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                            MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+                            return name.equals("setupClasspath") ? new MethodVisitor(Opcodes.ASM9, mv) {
+                                @Override
+                                public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
+                                    if(name.equals("extractAndApplyPatches") && opcode == Opcodes.INVOKESTATIC) {
+                                        super.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(PaperShelledAgent.class), "delegatePaperclip",
+                                                "(Ljava/nio/file/Path;[Ljava/lang/Object;Ljava/nio/file/Path;)Ljava/util/Map;",
+                                                false);
+                                    } else super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
+                                }
+                            } : mv;
+
+                        }
+                    }, ClassReader.EXPAND_FRAMES);
+                    return cw.toByteArray();
+                } else LOGGER.info("PaperShelled detected a legacy paperclip environment.");
+            } else if(className.equals("io/papermc/paperclip/Main")) {
+                return null;
+            }
+            if(!errored && !hasPaperClip && loader != ClassLoader.getSystemClassLoader() && loader != null) {
+                LOGGER.warning("This is not an error but a warning!");
+                LOGGER.warning("PaperShelled was not running under AppClassLoader but no Paperclip was found!");
+                LOGGER.warning("We don't ensure no problem will happen under current environment!");
+                LOGGER.warning("If you encounter any problem, report to us with detailed information.");
+                LOGGER.warning(className);
+                errored = true;
+            }
             if ("org/bukkit/craftbukkit/Main".equals(className)) {
+                LOGGER.info(String.format("PaperShelled is running in %s mode %s Paperclip",
+                        isLegacy ? "LEGACY" : "NON-LEGACY", hasPaperClip ? "WITH" : "WITHOUT"));
                 data = inject(data, "main", "cn/apisium/papershelled/PaperShelledAgent", "init");
-                URL url = Objects.requireNonNull(ClassLoader.getSystemResource("org/bukkit/craftbukkit/Main.class"));
+                URL url = Objects.requireNonNull(loader.getResource("org/bukkit/craftbukkit/Main.class"));
                 try {
                     serverJar = Paths.get(new URI(url.getFile().split("!", 2)[0]));
                 } catch (URISyntaxException e) {
@@ -169,5 +225,36 @@ public final class PaperShelledAgent {
         ClassWriter cw = new ClassWriter(0);
         cr.accept(new ClassRemapper(Opcodes.ASM9, cw, remapper) { }, ClassReader.EXPAND_FRAMES);
         return cw.toByteArray();
+    }
+
+
+    public static URL jarLocation() {
+        String toProcess = PaperShelled.class.getResource("/placeholder").getPath();
+        URL root;
+        try {
+            root = new URL(toProcess.substring(0, toProcess.indexOf('!')));
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+        return root;
+    }
+
+    public static Map<String, Map<String, URL>> delegatePaperclip(final Path originalJar, final Object[] patches, final Path repoDir) {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        try {
+            Class<?> arrayType = Array.newInstance(Class.forName("io.papermc.paperclip.PatchEntry"), 0).getClass();
+            Method method = Class.forName("io.papermc.paperclip.Paperclip")
+                    .getDeclaredMethod("extractAndApplyPatches",  Path.class, arrayType, Path.class);
+            method.setAccessible(true);
+            Map<String, Map<String, URL>> map = (Map<String, Map<String, URL>>) method.invoke(null, originalJar, patches, repoDir);
+            map.get("libraries").put("cn/apisium/papershelled/0.0.1/PaperShelled-0.0.1.jar", jarLocation());
+            return map;
+        } catch (Throwable e) {
+            if(e instanceof Error) {
+                throw (Error)e;
+            } else if(e instanceof RuntimeException) {
+                throw (RuntimeException)e;
+            } else throw new RuntimeException(e);
+        }
     }
 }
