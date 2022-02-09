@@ -23,6 +23,7 @@ public class Launcher {
         DEFAULT_CONFIG.put("server.lib", "libraries");
         DEFAULT_CONFIG.put("server.java.jvmargs", "");
         DEFAULT_CONFIG.put("server.java.path", "java");
+        DEFAULT_CONFIG.put("server.java.args", "");
     }
 
     public static void main(String[] args)
@@ -39,7 +40,12 @@ public class Launcher {
 
         URL[] classpath = setupClasspath(clip, libraries, server);
         if(Files.exists(server)) {
-            Process sp = runServer(classpath, java, prop.getProperty("server.java.jvmargs"), args);
+            String arg = prop.getProperty("server.java.args", "");
+            String[] argarr;
+            if(!arg.isEmpty()) {
+                argarr = arg.split(" ");
+            } else argarr = new String[0];
+            Process sp = runServer(classpath, java, prop.getProperty("server.java.jvmargs"), argarr);
             System.out.println("Server exited with exit code " + sp.waitFor());
         } else {
             System.err.println("Server jar was still not found. Cannot launch.");
