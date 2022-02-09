@@ -58,11 +58,7 @@ public class Launcher {
         Path propPth = Paths.get("papershelled.properties");
         if(!Files.exists(propPth)) {
             Files.createFile(propPth);
-            prop.put("server.clip", "paperclip.jar");
-            prop.put("server.jar", "server.jar");
-            prop.put("server.lib", "libraries");
-            prop.put("server.java.jvmargs", "");
-            prop.put("server.java.path", "java");
+            prop.putAll(DEFAULT_CONFIG);
             prop.store(Files.newBufferedWriter(propPth), "Auto generated config. server.clip:Paperclip jar;server.jar:Server jar;server.lib:libraries path;server.jvmargs:arguments used to launch server;server.java.path:java command");
             System.out.println("You are the first time running PaperShelled.");
             System.out.println("Please modify launch arguments in papershelled.properties as your wis.");
