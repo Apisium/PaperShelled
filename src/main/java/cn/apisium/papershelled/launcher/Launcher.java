@@ -112,25 +112,6 @@ public class Launcher {
         return classpath;
     }
 
-    static boolean generateServer(Path clip, Path output, String javaPth)
-            throws IOException, InterruptedException {
-        PaperInfo info = PaperInfo.fromJar(clip);
-        ProcessBuilder pb = new ProcessBuilder();
-        pb.command(javaPth, "-Dpaperclip.patchonly=true","-jar",clip.toString());
-        pb.inheritIO();
-        if(pb.start().waitFor() == 0) {
-            if(Files.exists(output)) {
-                System.err.println("Server jar was already there.Replacing...");
-                Files.delete(output);
-            }
-            Files.copy(info.getOutput(), output);
-        } else {
-            System.err.println("An error has occurred, the server will be stopped.");
-            return false;
-        }
-        return true;
-    }
-
     static Process runServer(URL[] classpath, String javaPth, String jvmargs, String[] args)
             throws IOException, URISyntaxException {
         ProcessBuilder pb = new ProcessBuilder();
