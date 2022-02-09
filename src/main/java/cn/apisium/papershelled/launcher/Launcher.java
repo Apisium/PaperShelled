@@ -3,13 +3,15 @@ package cn.apisium.papershelled.launcher;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.jar.JarFile;
 
@@ -18,27 +20,23 @@ public class Launcher {
     static final Map<String, String> DEFAULT_CONFIG = new HashMap<>();
 
     static {
-        DEFAULT_CONFIG.put("server.clip", "paperclip.jar");
-        DEFAULT_CONFIG.put("server.jar", "server.jar");
-        DEFAULT_CONFIG.put("server.lib", "libraries");
+        DEFAULT_CONFIG.put("server.jar", "");
         DEFAULT_CONFIG.put("server.java.jvmargs", "");
-        DEFAULT_CONFIG.put("server.java.path", "java");
+        DEFAULT_CONFIG.put("server.java.path", "");
         DEFAULT_CONFIG.put("server.java.args", "");
     }
 
     public static void main(String[] args)
-            throws IOException, InterruptedException, ClassNotFoundException, NoSuchMethodException,
+            throws IOException, InterruptedException, NoSuchMethodException,
             InvocationTargetException, IllegalAccessException, URISyntaxException {
         Properties prop = initConfig();
         if(prop == null){
             return;
         }
         Path server = Paths.get(prop.getProperty("server.jar"));
-        Path libraries = Paths.get(prop.getProperty("server.lib"));
-        Path clip = Paths.get(prop.getProperty("server.clip"));
         String java = prop.getProperty("server.java.path");
 
-        URL[] classpath = setupClasspath(clip, libraries, server);
+        URL[] classpath = setupClasspath(server);
         if(Files.exists(server)) {
             String arg = prop.getProperty("server.java.args", "");
             String[] argarr;
@@ -80,36 +78,26 @@ public class Launcher {
         return prop;
     }
 
-    static URL[] setupClasspath(Path clip, Path libraries, Path server)
-            throws IOException, ClassNotFoundException, NoSuchMethodException,
-            InvocationTargetException, IllegalAccessException {
+    static URL[] setupClasspath(Path server)
+            throws IOException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         URL[] classpath;
-        if(Files.exists(clip)) {
-            System.out.println("Paperclip found.Auto completing server files...");
+        if(Files.exists(server)) {
+            System.out.println("Server jar found.Auto completing server files...");
             URLClassLoader loader = new URLClassLoader(
-                    new URL[]{clip.toAbsolutePath().toUri().toURL()}, Launcher.class.getClassLoader());
-            Class<?> clipClz = loader.loadClass("io.papermc.paperclip.Paperclip");
-            Method setupClasspath = clipClz.getDeclaredMethod("setupClasspath");
-            setupClasspath.setAccessible(true);
-            classpath = (URL[]) setupClasspath.invoke(null);
+                    new URL[]{server.toAbsolutePath().toUri().toURL()}, Launcher.class.getClassLoader());
+            try {
+                Class<?> clipClz = loader.loadClass("io.papermc.paperclip.Paperclip");
+                System.out.println("It's paperclip!Constructing server...");
+                Method setupClasspath = clipClz.getDeclaredMethod("setupClasspath");
+                setupClasspath.setAccessible(true);
+                classpath = (URL[]) setupClasspath.invoke(null);
+            } catch (ClassNotFoundException e) {
+                System.out.println("It's a regular server jar.");
+                classpath = new URL[]{server.toAbsolutePath().toUri().toURL()};
+            }
         } else {
-            System.out.println("Paperclip is not present.Using libraries settings...");
-            List<URL> l = new LinkedList<>();
-            l.add(server.toAbsolutePath().toUri().toURL());
-            Files.walkFileTree(libraries, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    if(file.getFileName().toString().endsWith(".jar")) {
-                        try {
-                            l.add(file.toAbsolutePath().toUri().toURL());
-                        } catch (MalformedURLException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-            classpath = l.toArray(new URL[0]);
+            System.err.println("The server jar does not exists.Will not launch the server.");
+            classpath = null;
         }
         return classpath;
     }
@@ -124,7 +112,7 @@ public class Launcher {
         }
         JarFile jf = new JarFile(Paths.get(classpath[0].toURI()).toFile());
         String main = jf.getManifest().getMainAttributes().getValue("Main-Class");
-        String url = Launcher.class.getResource("/placeholder").getPath();
+        String url = Launcher.class.getResource("/cn/apisium/papershelled/launcher/Launcher.class").getPath();
         String f = url.substring(0, url.lastIndexOf('!'));
         f = f.substring(f.lastIndexOf("/")+1);
         String[] sja = jvmargs.split(" ");

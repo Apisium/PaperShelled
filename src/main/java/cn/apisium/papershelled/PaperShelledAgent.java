@@ -171,35 +171,4 @@ public final class PaperShelledAgent {
         cr.accept(new ClassRemapper(Opcodes.ASM9, cw, remapper) { }, ClassReader.EXPAND_FRAMES);
         return cw.toByteArray();
     }
-
-
-    public static URL jarLocation() {
-        String toProcess = PaperShelled.class.getResource("/placeholder").getPath();
-        URL root;
-        try {
-            root = new URL(toProcess.substring(0, toProcess.indexOf('!')));
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
-        return root;
-    }
-
-    public static Map<String, Map<String, URL>> delegatePaperclip(final Path originalJar, final Object[] patches, final Path repoDir) {
-        MethodHandles.Lookup lookup = MethodHandles.lookup();
-        try {
-            Class<?> arrayType = Array.newInstance(Class.forName("io.papermc.paperclip.PatchEntry"), 0).getClass();
-            Method method = Class.forName("io.papermc.paperclip.Paperclip")
-                    .getDeclaredMethod("extractAndApplyPatches",  Path.class, arrayType, Path.class);
-            method.setAccessible(true);
-            Map<String, Map<String, URL>> map = (Map<String, Map<String, URL>>) method.invoke(null, originalJar, patches, repoDir);
-            map.get("libraries").put("cn/apisium/papershelled/0.0.1/PaperShelled-0.0.1.jar", jarLocation());
-            return map;
-        } catch (Throwable e) {
-            if(e instanceof Error) {
-                throw (Error)e;
-            } else if(e instanceof RuntimeException) {
-                throw (RuntimeException)e;
-            } else throw new RuntimeException(e);
-        }
-    }
 }
