@@ -74,65 +74,10 @@ public final class PaperShelledAgent {
     }
 
     private final static class Transformer implements ClassFileTransformer {
-        private boolean hasPaperClip = false;
-        private boolean isLegacy = true;
-        private boolean errored = false;
         @Override
         public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
                                 ProtectionDomain protectionDomain, byte[] data) {
-            if(!hasPaperClip && className.contains("paperclip")) {
-                hasPaperClip = true;
-                LOGGER.info("PaperShelled detected Paperclip.");
-            }
-            if(className.equals("io/papermc/paperclip/Paperclip")) {
-                LOGGER.info("Paperclip is being transformed.");
-                ClassReader cr = new ClassReader(data);
-                cr.accept(new ClassVisitor(Opcodes.ASM9) {
-                    @Override
-                    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                        if (name.equals("setupClasspath")) {
-                            isLegacy = false;
-                        }
-                        return super.visitMethod(access, name, descriptor, signature, exceptions);
-                    }
-                }, ClassReader.SKIP_CODE);
-                if (!isLegacy) {
-                    LOGGER.info("PaperShelled detected a non-legacy launcher environment.");
-                    isLegacy = false;
-                    ClassWriter cw = new ClassWriter(0);
-                    cr.accept(new ClassVisitor(Opcodes.ASM9, cw) {
-                        @Override
-                        public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-                            MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-                            return name.equals("setupClasspath") ? new MethodVisitor(Opcodes.ASM9, mv) {
-                                @Override
-                                public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
-                                    if(name.equals("extractAndApplyPatches") && opcode == Opcodes.INVOKESTATIC) {
-                                        super.visitMethodInsn(Opcodes.INVOKESTATIC, Type.getInternalName(PaperShelledAgent.class), "delegatePaperclip",
-                                                "(Ljava/nio/file/Path;[Ljava/lang/Object;Ljava/nio/file/Path;)Ljava/util/Map;",
-                                                false);
-                                    } else super.visitMethodInsn(opcode, owner, name, descriptor, isInterface);
-                                }
-                            } : mv;
-
-                        }
-                    }, ClassReader.EXPAND_FRAMES);
-                    return cw.toByteArray();
-                } else LOGGER.info("PaperShelled detected a legacy paperclip environment.");
-            } else if(className.equals("io/papermc/paperclip/Main")) {
-                return null;
-            }
-            if(!errored && !hasPaperClip && loader != ClassLoader.getSystemClassLoader() && loader != null) {
-                LOGGER.warning("This is not an error but a warning!");
-                LOGGER.warning("PaperShelled was not running under AppClassLoader but no Paperclip was found!");
-                LOGGER.warning("We don't ensure no problem will happen under current environment!");
-                LOGGER.warning("If you encounter any problem, report to us with detailed information.");
-                LOGGER.warning(className);
-                errored = true;
-            }
             if ("org/bukkit/craftbukkit/Main".equals(className)) {
-                LOGGER.info(String.format("PaperShelled is running in %s mode %s Paperclip",
-                        isLegacy ? "LEGACY" : "NON-LEGACY", hasPaperClip ? "WITH" : "WITHOUT"));
                 data = inject(data, "main", "cn/apisium/papershelled/PaperShelledAgent", "init");
                 URL url = Objects.requireNonNull(loader.getResource("org/bukkit/craftbukkit/Main.class"));
                 try {

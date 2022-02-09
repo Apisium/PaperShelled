@@ -43,6 +43,7 @@ jar {
         attributes 'Can-Retransform-Classes': 'true'
         attributes 'Agent-Class': 'cn.apisium.papershelled.PaperShelledAgent'
         attributes 'Premain-Class': 'cn.apisium.papershelled.PaperShelledAgent'
+        attributes 'Main-Class': 'cn.apisium.papershelled.launcher.Launcher'
     }
 }
 
