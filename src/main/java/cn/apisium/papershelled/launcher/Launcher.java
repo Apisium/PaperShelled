@@ -153,7 +153,6 @@ public class Launcher {
         params[sja.length + 3] = "-javaagent:" + f;
         params[sja.length + 4] = main;
         System.arraycopy(args, 0, params, sja.length + 5, args.length);
-        System.out.println(String.join(" ", params));
         System.out.println("Launching "+main);
         pb.command(params);
         pb.inheritIO();
