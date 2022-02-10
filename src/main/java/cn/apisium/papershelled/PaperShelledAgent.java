@@ -2,6 +2,7 @@ package cn.apisium.papershelled;
 
 import cn.apisium.papershelled.services.MixinService;
 import com.google.common.io.ByteStreams;
+import org.checkerframework.checker.units.qual.C;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.*;
@@ -17,19 +18,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
-import java.net.*;
+import java.net.JarURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
-import java.util.Map;
 import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import java.util.logging.*;
+import java.util.logging.Logger;
 
 public final class PaperShelledAgent {
     private static boolean initialized;
@@ -62,10 +62,12 @@ public final class PaperShelledAgent {
 
     @Nullable
     public static InputStream getResourceAsStream(String name) { return ClassLoader.getSystemResourceAsStream(name); }
+
     @Nullable
     public static InputStream getClassAsStream(String name) {
         return getResourceAsStream(name.replace('.', '/') + ".class");
     }
+
     public static byte[] getClassAsByteArray(String name) throws IOException {
         try (InputStream is = getClassAsStream(name)) {
             if (is == null) throw new FileNotFoundException("Class not found: " + name);
@@ -77,7 +79,48 @@ public final class PaperShelledAgent {
         @Override
         public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
                                 ProtectionDomain protectionDomain, byte[] data) {
-            if ("org/bukkit/craftbukkit/Main".equals(className)) {
+            if("io/papermc/paperclip/Paperclip".equals(className)) {
+                ClassReader cr = new ClassReader(data);
+                ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+                cr.accept(new ClassVisitor(Opcodes.ASM9, cw) {
+                    @Override
+                    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+                        MethodVisitor v = super.visitMethod(access, name, descriptor, signature, exceptions);
+                        return name.equals("main") ? new MethodVisitor(Opcodes.ASM9) {
+                            /**
+                             * What I want is as follows:
+                             * {@code
+                             *
+                             * public static void main(String[] args){
+                             *     cn.apisium.papershelled.launcher.Launcher.launch(args);
+                             * }
+                             *
+                             * }
+                             * And this is the ASM way to make it.
+                             */
+                            @Override
+                            public void visitCode() {
+                                super.visitCode();
+                                Label l0 = new Label();
+                                v.visitLabel(l0);
+                                v.visitLineNumber(0, l0);//Trick JVM
+                                v.visitVarInsn(Opcodes.ALOAD, 0);
+                                v.visitMethodInsn(Opcodes.INVOKESTATIC, "cn/apisium/papershelled/launcher/Launcher", "launch", "([Ljava/lang/String;)V", false);
+                                Label l1 = new Label();
+                                v.visitLabel(l1);
+                                v.visitLineNumber(0, l1);
+                                v.visitInsn(Opcodes.RETURN);
+                                Label l2 = new Label();
+                                v.visitLabel(l2);
+                                v.visitLocalVariable("args", "[Ljava/lang/String;", null, l0, l2, 0);
+                                v.visitMaxs(1, 1);
+                                v.visitEnd();
+                            }
+                        } : v;
+                    }
+                }, ClassReader.EXPAND_FRAMES);
+                return cw.toByteArray();
+            } else if ("org/bukkit/craftbukkit/Main".equals(className)) {
                 data = inject(data, "main", "cn/apisium/papershelled/PaperShelledAgent", "init");
                 URL url = Objects.requireNonNull(loader.getResource("org/bukkit/craftbukkit/Main.class"));
                 try {
