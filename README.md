@@ -12,8 +12,7 @@ A Spigot mixin development framework.
 java -javaagent:PaperShelled.jar -jar server_core.jar
 ```
 
-Then you can put your plugins in the `PaperShelled/plugins` directory!
-
+4. Then you can put your plugins in the `PaperShelled/plugins` directory and enjoy it!
 ## For plugin developers
 
 See also: https://github.com/Apisium/PaperShelledPluginTemplate
