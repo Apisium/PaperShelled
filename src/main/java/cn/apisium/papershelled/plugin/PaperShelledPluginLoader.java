@@ -6,6 +6,7 @@ import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.Warning;
 import org.bukkit.event.Event;
+import org.bukkit.event.EventException;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginDisableEvent;
@@ -13,10 +14,15 @@ import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.plugin.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.spigotmc.CustomTimingsHandler;
 import org.spongepowered.asm.mixin.Mixins;
 import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -36,6 +42,13 @@ public final class PaperShelledPluginLoader implements PluginLoader {
     private final HashMap<String, PaperShelledPlugin> plugins = new HashMap<>();
     private final HashMap<File, JarFile> jarFiles = new HashMap<>();
     private final HashMap<String, JarFile> jarFilesMap = new HashMap<>();
+    private CustomTimingsHandler pluginParentTimer;
+
+    //Cache for paper check.
+    private boolean checkedPaper = false;
+    private boolean isPaper = false;
+    private MethodHandle eeCreate;
+    private MethodHandle newTimed;
 
     @SuppressWarnings("unused")
     @Nullable
@@ -176,6 +189,26 @@ public final class PaperShelledPluginLoader implements PluginLoader {
         return fileFilters.clone();
     }
 
+    private void checkPaper() {
+        if(checkedPaper) {
+            return;
+        }
+        checkedPaper = true;
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        Class<? extends EventExecutor> timedClz;
+        try {
+            Class.forName("com.destroystokyo.paper.PaperConfig");
+            isPaper = true;
+            timedClz = Class.forName("co.aikar.timings.TimedEventExecutor").asSubclass(EventExecutor.class);
+            eeCreate = lookup.findStatic(EventExecutor.class, "create", MethodType.methodType(EventExecutor.class, Method.class, Class.class));
+            newTimed = lookup.findConstructor(timedClz, MethodType.methodType(void.class, EventExecutor.class, Plugin.class, Method.class, Class.class));
+        } catch (ClassNotFoundException | NoSuchMethodException ignored) {
+            pluginParentTimer = new CustomTimingsHandler("*** Plugin");
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("Cannot initialize EventExecutor implementation for Paper!", e);
+        }
+    }
+
     @Override
     @NotNull
     public Map<Class<? extends Event>, Set<RegisteredListener>> createRegisteredListeners(@NotNull Listener listener, @NotNull final Plugin plugin) {
@@ -210,6 +243,7 @@ public final class PaperShelledPluginLoader implements PluginLoader {
             }
             final Class<? extends Event> eventClass = checkClass.asSubclass(Event.class);
             method.setAccessible(true);
+            Set<RegisteredListener> eventSet = ret.computeIfAbsent(eventClass, k -> new HashSet<>());
 
             for (Class<?> clazz = eventClass; Event.class.isAssignableFrom(clazz); clazz = clazz.getSuperclass()) {
                 // This loop checks for extending deprecated events
@@ -227,7 +261,41 @@ public final class PaperShelledPluginLoader implements PluginLoader {
                     break;
                 }
             }
+
+            checkPaper();
+            if(isPaper) {
+                try {
+                    EventExecutor executor = (EventExecutor) newTimed.invoke((EventExecutor)eeCreate.invoke(method, eventClass), plugin, method, eventClass);
+                    eventSet.add(new RegisteredListener(listener, executor, eh.priority(), plugin, eh.ignoreCancelled()));
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+            } else {
+                final CustomTimingsHandler timings = new CustomTimingsHandler("Plugin: " + plugin.getDescription().getFullName() + " Event: " + listener.getClass().getName() + "::" + method.getName() + "(" + eventClass.getSimpleName() + ")", pluginParentTimer);
+                EventExecutor executor = (listener1, event) -> {
+                    try {
+                        if (eventClass.isAssignableFrom(event.getClass())) {
+                            boolean isAsync = event.isAsynchronous();
+                            if (!isAsync) {
+                                timings.startTiming();
+                            }
+
+                            method.invoke(listener1, event);
+                            if (!isAsync) {
+                                timings.stopTiming();
+                            }
+
+                        }
+                    } catch (InvocationTargetException var4) {
+                        throw new EventException(var4.getCause());
+                    } catch (Throwable var5) {
+                        throw new EventException(var5);
+                    }
+                };
+                eventSet.add(new RegisteredListener(listener, executor, eh.priority(), plugin, eh.ignoreCancelled()));
+            }
         }
+
         return ret;
     }
 
